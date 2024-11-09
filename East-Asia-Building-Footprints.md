@@ -78,9 +78,15 @@ con.sql('INSTALL lindel FROM community')
 
 # Get the list of projections
 def get_epsg(filename):
-    return pyproj.Proj(open(str(filename).split('.')[0] + '.prj').read())\
+    epsg_id = pyproj.Proj(open(str(filename).split('.')[0] + '.prj').read())\
                     .crs\
                     .to_epsg()
+
+    # WIP: Make sure all four problematic locations look like 4326
+    if not epsg_id:
+        return 4326
+
+    return epsg_id
 
 
 workload = [(filename, get_epsg(filename))
@@ -111,6 +117,9 @@ def extract(manifest):
 
     # Do lat and long need to be flipped?
 
+    # WIP: The statement below is very slow and only uses 2 CPU cores. See
+    # if you can find a faster way to identify flipped lat-lons.
+
     # WIP: Why is the spatial extension complaining about the %(geom)s field?
     # Is it renaming it geom magically or something?
     sql = '''SELECT MIN(ST_XMIN(ST_TRANSFORM(geom,
@@ -134,18 +143,19 @@ def extract(manifest):
         return None
 
     '''
-    Examples of files that need lat & lon flipped:
+    Examples of files that need lat & lon flipped.
+    Their min_x values are well over 60.
 
-    (PosixPath('China/Guangdong/Shenzhen.shx'), 'wkb_geometry', np.float64(113.76798131399326))
-    (PosixPath('China/Beijing/Beijing.shx'), 'wkb_geometry', np.float64(115.43053110645005))
-    (PosixPath('China/Hongkong/Hongkong.shx'), 'wkb_geometry', np.float64(113.8467615261236))
-    (PosixPath('South Korea/South_Korea_build_final.shx'), 'wkb_geometry', np.float64(124.6171931))
+    China/Guangdong/Shenzhen.shx
+    China/Beijing/Beijing.shx
+    China/Hongkong/Hongkong.shx
+    South Korea/South_Korea_build_final.shx
 
     Northern cities where they don't need to be flipped. These should help
     decide the cut-off point.
 
-    (PosixPath('China/Heilongjiang/Daxinganling.shx'), 'wkb_geometry', np.float64(50.333342042038495))
-    (PosixPath('China/Gansu/Jiayuguan.shx'), 'wkb_geometry', np.float64(39.65811285004477))
+    China/Heilongjiang/Daxinganling.shx
+    China/Gansu/Jiayuguan.shx
     '''
 
     flip_lat_lon = min_x > 60
@@ -153,13 +163,13 @@ def extract(manifest):
     # Convert to Parquet
     sql = """COPY (
                  WITH a AS (
-                     SELECT ST_TRANSFORM(%(geom)s,
+                     SELECT ST_TRANSFORM(%(geom)s::GEOMETRY,
                                         'EPSG:%(epsg)d',
                                         'EPSG:4326') geom
                      FROM   ST_READ(?, keep_wkb=TRUE)
                      WHERE ('0x' || substr(%(geom)s::BLOB::TEXT, 7, 2))::int < 8
                   )
-                  SELECT %(geom_flip) AS gem
+                  SELECT %(geom_flip)s AS geom
                   FROM   a
                   ORDER BY HILBERT_ENCODE([
                                 ST_Y(ST_CENTROID(geom)),
@@ -169,11 +179,10 @@ def extract(manifest):
                     CODEC             'ZSTD',
                     COMPRESSION_LEVEL 22,
                     ROW_GROUP_SIZE    15000);""" % {
-        'geom': wkb_cols[0],
-        'geom_flip': 'geom' if not flip_lat_lon else
-                     'ST_FlipCoordinates(geom)'
-        'epsg': epsg_id,
-        'out': filename.as_posix().replace('.shx', '.pq')}
+        'geom':      wkb_cols[0],
+        'geom_flip': 'geom' if not flip_lat_lon else 'ST_FlipCoordinates(geom)',
+        'epsg':      epsg_id,
+        'out':       filename.as_posix().replace('.shx', '.pq')}
 
     try:
         df = con.sql(sql,
@@ -183,7 +192,7 @@ def extract(manifest):
         print(exc)
 
 
-pool = Pool(20)
+pool = Pool(8)
 
 # WIP: Find any files that you couldn't get the projection for
 resp = pool.map(extract, [(filename, epsg_num)
