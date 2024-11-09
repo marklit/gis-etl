@@ -160,7 +160,7 @@ def extract(manifest):
     China/Gansu/Jiayuguan.shx
     '''
 
-    flip_lat_lon = min_x > 60
+    flip_lat_lon = min_x < 60
 
     # Convert to Parquet
     sql = """COPY (
@@ -187,8 +187,8 @@ def extract(manifest):
         'out':       filename.as_posix().replace('.shx', '.pq')}
 
     try:
-        df = con.sql(sql,
-                     params=(filename.as_posix(),)).to_df()
+        con.sql(sql,
+                params=(filename.as_posix(),))
     except Exception as exc:
         print(filename)
         print(exc)
