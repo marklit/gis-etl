@@ -193,13 +193,12 @@ def extract(manifest):
         print(filename)
         print(exc)
 
+    print('Finished: %s' % filename)
+
 
 pool = Pool(8)
-
-# WIP: Find any files that you couldn't get the projection for
-resp = pool.map(extract, [(filename, epsg_num)
-                          for filename, epsg_num in workload
-                          if epsg_num])
+pool.map(extract, [(filename, epsg_num)
+                   for filename, epsg_num in workload])
 ```
 
 ## Merge PQs
