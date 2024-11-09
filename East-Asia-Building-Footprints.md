@@ -139,6 +139,7 @@ def extract(manifest):
     (PosixPath('China/Guangdong/Shenzhen.shx'), 'wkb_geometry', np.float64(113.76798131399326))
     (PosixPath('China/Beijing/Beijing.shx'), 'wkb_geometry', np.float64(115.43053110645005))
     (PosixPath('China/Hongkong/Hongkong.shx'), 'wkb_geometry', np.float64(113.8467615261236))
+    (PosixPath('South Korea/South_Korea_build_final.shx'), 'wkb_geometry', np.float64(124.6171931))
 
     Northern cities where they don't need to be flipped. These should help
     decide the cut-off point.

@@ -90,7 +90,7 @@ $ for FILENAME in `ls Deliverable*.zip`; do
                     CODEC             'ZSTD',
                     COMPRESSION_LEVEL 22,
                     ROW_GROUP_SIZE    15000);" \
-              | ~/duckdb_111/duckdb
+              | ~/duckdb
       fi
   done
 ```
