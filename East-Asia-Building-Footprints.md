@@ -134,10 +134,11 @@ def extract(manifest):
         return None
 
     '''
-    Examples of files that need to be flipped:
+    Examples of files that need lat & lon flipped:
 
     (PosixPath('China/Guangdong/Shenzhen.shx'), 'wkb_geometry', np.float64(113.76798131399326))
     (PosixPath('China/Beijing/Beijing.shx'), 'wkb_geometry', np.float64(115.43053110645005))
+    (PosixPath('China/Hongkong/Hongkong.shx'), 'wkb_geometry', np.float64(113.8467615261236))
 
     Northern cities where they don't need to be flipped. These should help
     decide the cut-off point.
