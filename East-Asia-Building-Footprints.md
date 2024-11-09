@@ -121,7 +121,9 @@ def extract(manifest):
     # if you can find a faster way to identify flipped lat-lons.
 
     # WIP: Why is the spatial extension complaining about the %(geom)s field?
-    # Is it renaming it geom magically or something?
+    # Is it renaming it geom magically or something? keep_wkb will default
+    # to False, is the Spatial extension offering "geom" as a default column
+    # name to call on or something?
     sql = '''SELECT MIN(ST_XMIN(ST_TRANSFORM(geom,
                                              'EPSG:%(epsg)d',
                                              'EPSG:4326'))) as min_x
@@ -200,4 +202,8 @@ resp = pool.map(extract, [(filename, epsg_num)
                           if epsg_num])
 ```
 
+## Merge PQs
+
 WIP: Open every PQ file with filename=True and merge into a single PQ file.
+
+## Extract EWKB Geometry
