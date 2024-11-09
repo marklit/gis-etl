@@ -176,7 +176,7 @@ def extract(manifest):
                   ORDER BY HILBERT_ENCODE([
                                 ST_Y(ST_CENTROID(geom)),
                                 ST_X(ST_CENTROID(geom))]::double[2])
-             ) TO '%(out)s.pq' (
+             ) TO '%(out)s' (
                     FORMAT            'PARQUET',
                     CODEC             'ZSTD',
                     COMPRESSION_LEVEL 22,
