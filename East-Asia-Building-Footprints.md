@@ -12,27 +12,26 @@ $ sudo apt install \
     python3-pip \
     python3-virtualenv
 
-$ virtualenv ~/.clsm
+$ python3 -m venv ~/.clsm
 $ source ~/.clsm/bin/activate
 
 $ pip install \
-    duckdb \
+    'duckdb==1.1.3' \
+    pandas \
     pyproj \
     shapely
 ```
 
 ```bash
 $ cd ~
-$ wget -c https://github.com/duckdb/duckdb/releases/download/v1.1.1/duckdb_cli-linux-amd64.zip
+$ wget -c https://github.com/duckdb/duckdb/releases/download/v1.1.3/duckdb_cli-linux-amd64.zip
 $ unzip -j duckdb_cli-linux-amd64.zip
 $ chmod +x duckdb
 $ ~/duckdb
 ```
 
 ```sql
-INSTALL h3 FROM community;
 INSTALL lindel FROM community;
-INSTALL json;
 INSTALL parquet;
 INSTALL spatial;
 ```
@@ -44,9 +43,8 @@ $ vi ~/.duckdbrc
 ```sql
 .timer on
 .width 180
-LOAD h3;
+
 LOAD lindel;
-LOAD json;
 LOAD parquet;
 LOAD spatial;
 ```
@@ -62,8 +60,6 @@ https://zenodo.org/records/8174931
 WIP: Produce Parquet files of the building footprints instead of bounding boxes.
 
 ```python
-from   collections     import Counter
-import json
 from   multiprocessing import Pool
 from   pathlib         import Path
 
@@ -71,6 +67,16 @@ import duckdb
 import pyproj
 
 
+# Make sure the extensions are installed in embedded version of DuckDB
+con = duckdb.connect(database=':memory:')
+
+for ext in ('spatial', 'parquet'):
+    con.sql('INSTALL %s' % ext)
+
+con.sql('INSTALL lindel FROM community')
+
+
+# Get the list of projections
 def get_epsg(filename):
     return pyproj.Proj(open(str(filename).split('.')[0] + '.prj').read())\
                     .crs\
@@ -85,29 +91,87 @@ def extract(manifest):
     filename, epsg_id = manifest
 
     con = duckdb.connect(database=':memory:')
-    con.sql('INSTALL spatial; LOAD spatial')
+
+    for ext in ('spatial', 'parquet', 'lindel'):
+        con.sql('LOAD %s' % ext)
 
     # Find the name of the geom column
     sql = 'DESCRIBE FROM ST_READ(?, keep_wkb=TRUE) LIMIT 1'
 
     wkb_cols = [x['column_name']
                 for x in list(con.sql(sql,
-                                      params=(filename.as_posix(),)).to_df().iloc())
-                if x['column_type'] == 'WKB_BLOB']
+                                      params=(filename.as_posix(),))
+                                 .to_df()
+                                 .iloc())
+                if x['column_type'] in ('WKB_BLOB', 'GEOMETRY')]
 
     if not wkb_cols:
+        print('No geom field name found in %s' % filename.as_posix())
         return None
 
-    # Create a bounding box of the geometry.
-    # Exclude geometry that GEOS doesn't support.
-    sql = """SELECT ST_AsText({min_x: MIN(ST_XMIN(ST_TRANSFORM(%(geom)s::GEOMETRY, 'EPSG:%(epsg)d', 'EPSG:4326'))),
-                               min_y: MIN(ST_YMIN(ST_TRANSFORM(%(geom)s::GEOMETRY, 'EPSG:%(epsg)d', 'EPSG:4326'))),
-                               max_x: MAX(ST_XMAX(ST_TRANSFORM(%(geom)s::GEOMETRY, 'EPSG:%(epsg)d', 'EPSG:4326'))),
-                               max_y: MAX(ST_YMAX(ST_TRANSFORM(%(geom)s::GEOMETRY, 'EPSG:%(epsg)d', 'EPSG:4326')))}::BOX_2D::GEOMETRY) AS bbox
-             FROM   ST_READ(?, keep_wkb=TRUE)
-             WHERE ('0x' || substr(%(geom)s::BLOB::TEXT, 7, 2))::int < 8""" % {
+    # Do lat and long need to be flipped?
+
+    # WIP: Why is the spatial extension complaining about the %(geom)s field?
+    # Is it renaming it geom magically or something?
+    sql = '''SELECT MIN(ST_XMIN(ST_TRANSFORM(geom,
+                                             'EPSG:%(epsg)d',
+                                             'EPSG:4326'))) as min_x
+             FROM ST_READ(?)''' % {
+                'geom': wkb_cols[0],
+                'epsg': epsg_id}
+
+
+    try:
+        min_x = [x['min_x']
+                    for x in list(con.sql(sql,
+                                          params=(filename.as_posix(),))
+                                     .to_df()
+                                     .iloc())][0]
+    except Exception as exc:
+        print(exc)
+        print(filename, epsg_id)
+        print(sql)
+        return None
+
+    '''
+    Examples of files that need to be flipped:
+
+    (PosixPath('China/Guangdong/Shenzhen.shx'), 'wkb_geometry', np.float64(113.76798131399326))
+    (PosixPath('China/Beijing/Beijing.shx'), 'wkb_geometry', np.float64(115.43053110645005))
+
+    Northern cities where they don't need to be flipped. These should help
+    decide the cut-off point.
+
+    (PosixPath('China/Heilongjiang/Daxinganling.shx'), 'wkb_geometry', np.float64(50.333342042038495))
+    (PosixPath('China/Gansu/Jiayuguan.shx'), 'wkb_geometry', np.float64(39.65811285004477))
+    '''
+
+    flip_lat_lon = min_x > 60
+
+    # Convert to Parquet
+    sql = """COPY (
+                 WITH a AS (
+                     SELECT ST_TRANSFORM(%(geom)s,
+                                        'EPSG:%(epsg)d',
+                                        'EPSG:4326') geom
+                     FROM   ST_READ(?, keep_wkb=TRUE)
+                     WHERE ('0x' || substr(%(geom)s::BLOB::TEXT, 7, 2))::int < 8
+                  )
+                  SELECT %(geom_flip) AS gem
+                  FROM   a
+                  ORDER BY HILBERT_ENCODE([
+                                ST_Y(ST_CENTROID(geom)),
+                                ST_X(ST_CENTROID(geom))]::double[2])
+             ) TO '%(out)s.pq' (
+                    FORMAT            'PARQUET',
+                    CODEC             'ZSTD',
+                    COMPRESSION_LEVEL 22,
+                    ROW_GROUP_SIZE    15000);""" % {
         'geom': wkb_cols[0],
-        'epsg': epsg_id}
+        'geom_flip': 'geom' if not flip_lat_lon
+                            else 'ST_FlipCoordinates(geom)'
+        'epsg': epsg_id,
+        'out': filename.as_posix().replace('.shx', '.pq')}
 
     try:
         df = con.sql(sql,
@@ -115,60 +179,14 @@ def extract(manifest):
     except Exception as exc:
         print(filename)
         print(exc)
-        return None
-
-    if not df.empty:
-        return filename.name\
-                       .split('.')[0]\
-                       .replace('_build_final', '')\
-                       .upper(), \
-               epsg_id, \
-               df.iloc()[0]['bbox']
-
-    return None
 
 
 pool = Pool(20)
+
+# WIP: Find any files that you couldn't get the projection for
 resp = pool.map(extract, [(filename, epsg_num)
                           for filename, epsg_num in workload
                           if epsg_num])
-
-resp = [x
-        for x in resp
-        if x is not None]
-
-with open('bboxes.csv', 'w') as f:
-    f.write('filename, epsg, geom\n')
-
-    for filename, epsg, geom in resp:
-        f.write('"%s",%d,"%s"\n' % (filename, epsg, geom))
 ```
 
-The bounding boxes for 348 cities, regions and countries were detected and saved into bboxes.csv. Around ten records ordered their coordinates by longitude and latitude while the remaining did the inverse. I ran the following Python code to normalise them all to longitude then latitude.
-
-```python
-import csv
-
-from shapely     import wkt
-from shapely.ops import transform
-
-
-with open('bboxes.csv') as csv_file:
-    reader = csv.DictReader(csv_file, skipinitialspace=True)
-
-    with open('bboxes2.csv', 'w') as out:
-        writer = csv.DictWriter(out, fieldnames=reader.fieldnames)
-        writer.writeheader()
-
-        for row in reader:
-            if ',' in row['geom']:
-                poly = wkt.loads(row['geom'])
-
-                if  poly.exterior.coords.xy[0][0] < \
-                    poly.exterior.coords.xy[1][0]:
-                    row['geom'] = transform(lambda x, y: (y, x), poly).wkt
-
-                writer.writerow({key: value
-                                 for key, value in row.items()})
-```
-
+WIP: Open every PQ file with filename=True and merge into a single PQ file.

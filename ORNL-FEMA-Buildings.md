@@ -12,7 +12,7 @@ $ sudo apt install \
     python3-pip \
     python3-virtualenv
 
-$ virtualenv ~/.ornl
+$ python3 -m venv ~/.ornl
 $ source ~/.ornl/bin/activate
 
 $ pip install \
@@ -28,9 +28,7 @@ $ ~/duckdb
 ```
 
 ```sql
-INSTALL h3 FROM community;
 INSTALL lindel FROM community;
-INSTALL json;
 INSTALL parquet;
 INSTALL spatial;
 ```
@@ -42,9 +40,8 @@ $ vi ~/.duckdbrc
 ```sql
 .timer on
 .width 180
-LOAD h3;
+
 LOAD lindel;
-LOAD json;
 LOAD parquet;
 LOAD spatial;
 ```
@@ -97,5 +94,3 @@ $ for FILENAME in `ls Deliverable*.zip`; do
       fi
   done
 ```
-
-WIP: Embed metadata for each source ZIP in their respective Parquet files: https://github.com/duckdb/duckdb/discussions/14681
