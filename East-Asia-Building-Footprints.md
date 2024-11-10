@@ -19,7 +19,8 @@ $ pip install \
     'duckdb==1.1.3' \
     pandas \
     pyproj \
-    shapely
+    shapely \
+    typer
 ```
 
 ```bash
@@ -58,7 +59,7 @@ https://zenodo.org/records/8174931
 ## Converting to Parquet
 
 ```bash
-$ python east_asia.py
+$ python east_asia.py main
 ```
 
 ## Merge PQs
@@ -85,3 +86,12 @@ COPY (
 ```
 
 ## Extract EWKB Geometry
+
+```bash
+$ python east_asia.py ewkb
+$ ~/duckdb
+```
+
+```sql
+FROM READ_JSON('shape_stats.json');
+```

@@ -1,18 +1,14 @@
+import json
 from   multiprocessing import Pool
 from   os.path         import exists
 from   pathlib         import Path
 
 import duckdb
 import pyproj
+import typer
 
 
-# Make sure the extensions are installed in embedded version of DuckDB
-con = duckdb.connect(database=':memory:')
-
-for ext in ('spatial', 'parquet'):
-    con.sql('INSTALL %s' % ext)
-
-con.sql('INSTALL lindel FROM community')
+app = typer.Typer(rich_markup_mode='rich')
 
 
 # Get the list of projections
@@ -26,10 +22,6 @@ def get_epsg(filename):
         return 4326
 
     return epsg_id
-
-
-workload = [(filename, get_epsg(filename))
-            for filename in Path('.').glob('**/*.shx')]
 
 
 def extract(manifest):
@@ -138,6 +130,85 @@ def extract(manifest):
     print('Finished: %s' % filename)
 
 
-pool = Pool(8)
-pool.map(extract, [(filename, epsg_num)
-                   for filename, epsg_num in workload])
+def get_ewkb_geometry(manifest):
+    filename = manifest[0]
+
+    con = duckdb.connect(database=':memory:')
+    con.sql('LOAD spatial')
+
+    # Find the name of the geom column
+    sql = 'DESCRIBE FROM ST_READ(?, keep_wkb=TRUE) LIMIT 1'
+    wkb_cols = [x['column_name']
+                for x in list(con.sql(sql,
+                                      params=(filename.as_posix(),))
+                                 .to_df()
+                                 .iloc())
+                if x['column_type'] in ('WKB_BLOB', 'GEOMETRY')]
+
+    if not wkb_cols:
+        print('No geom field name found in %s' % filename.as_posix())
+        return None
+
+    # Get the number of records for each shape type.
+    sql = '''SELECT   ('0x' || substr(%(geom)s::BLOB::TEXT, 7, 2))::INT
+                            AS shape_type,
+                      COUNT(*) cnt
+             FROM     ST_READ(?, keep_wkb=TRUE)
+             GROUP BY 1''' % {
+             'geom': wkb_cols[0],
+          }
+
+    try:
+        return [(x['shape_type'],
+                 x['cnt'],
+                 filename)
+                for x in list(con.sql(sql,
+                                      params=(filename.as_posix(),))
+                                 .to_df()
+                                 .iloc())]
+    except Exception as exc:
+        print('Failed: %s' % filename.as_posix())
+        print(exc)
+        return None
+
+
+@app.command()
+def main(pool_size:int = typer.Option(8)):
+    # Make sure the extensions are installed in embedded version of DuckDB
+    con = duckdb.connect(database=':memory:')
+
+    for ext in ('spatial', 'parquet'):
+        con.sql('INSTALL %s' % ext)
+
+    con.sql('INSTALL lindel FROM community')
+
+    workload = [(filename, get_epsg(filename))
+                for filename in Path('.').glob('**/*.shx')]
+
+    pool = Pool(pool_size)
+    pool.map(extract, [(filename, epsg_num)
+                       for filename, epsg_num in workload])
+
+
+@app.command()
+def ewkb(pool_size:int = typer.Option(8)):
+    # Make sure the extensions are installed in embedded version of DuckDB
+    con = duckdb.connect(database=':memory:')
+    con.sql('INSTALL spatial')
+
+    pool = Pool(pool_size)
+    resp = pool.map(get_ewkb_geometry,
+                    [(filename,)
+                     for filename in Path('.').glob('**/*.shx')])
+    resp = [x for x in resp if x is not None] # Remove failed jobs
+
+    with open('shape_stats.json', 'w') as f:
+        for shape_type, num_recs, filename in resp:
+            f.write(json.dumps({
+                'shape_type': shape_type,
+                'num_recs':   num_recs,
+                'filename':   filename}) + '\n')
+
+
+if __name__ == "__main__":
+    app()
