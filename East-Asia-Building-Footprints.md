@@ -73,6 +73,8 @@ $ find . | grep -c shx$ # 358
 
 WIP: ``Japan/Japan4.shx`` still needs to be processed.
 
+WIP: First vector of first record from each file. Make sure it's lon-lat.
+
 ## Merge PQs
 
 ```bash
