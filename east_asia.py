@@ -106,18 +106,18 @@ def extract(manifest):
 
     # Convert to Parquet
     sql = """COPY (
-                 WITH a AS (
-                     SELECT ST_TRANSFORM(%(geom)s::GEOMETRY,
-                                        'EPSG:%(epsg)d',
-                                        'EPSG:4326') geom
-                     FROM   ST_READ(?, keep_wkb=TRUE)
-                     WHERE ('0x' || substr(%(geom)s::BLOB::TEXT, 7, 2))::int < 8
-                  )
-                  SELECT %(geom_flip)s AS geom
-                  FROM   a
-                  ORDER BY HILBERT_ENCODE([
-                                ST_Y(ST_CENTROID(geom)),
-                                ST_X(ST_CENTROID(geom))]::double[2])
+               WITH a AS (
+                 SELECT ST_TRANSFORM(%(geom)s::GEOMETRY,
+                                    'EPSG:%(epsg)d',
+                                    'EPSG:4326') geom
+                 FROM   ST_READ(?, keep_wkb=TRUE)
+                 WHERE  ('0x' || substr(%(geom)s::BLOB::TEXT, 7, 2))::INT < 8
+               )
+               SELECT   %(geom_flip)s AS geom
+               FROM     a
+               ORDER BY HILBERT_ENCODE([
+                             ST_Y(ST_CENTROID(geom)),
+                             ST_X(ST_CENTROID(geom))]::DOUBLE[2])
              ) TO '%(out)s' (
                     FORMAT            'PARQUET',
                     CODEC             'ZSTD',
