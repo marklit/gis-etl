@@ -200,14 +200,16 @@ def ewkb(pool_size:int = typer.Option(8)):
     resp = pool.map(get_ewkb_geometry,
                     [(filename,)
                      for filename in Path('.').glob('**/*.shx')])
-    resp = [x for x in resp if x is not None] # Remove failed jobs
 
     with open('shape_stats.json', 'w') as f:
-        for shape_type, num_recs, filename in resp:
-            f.write(json.dumps({
-                'shape_type': shape_type,
-                'num_recs':   num_recs,
-                'filename':   filename}) + '\n')
+        for recs in resp:
+            if recs and len(recs) == 3:
+                shape_type, num_recs, filename = recs
+
+                f.write(json.dumps({
+                            'shape_type': shape_type,
+                            'num_recs':   num_recs,
+                            'filename':   filename}) + '\n')
 
 
 if __name__ == "__main__":
