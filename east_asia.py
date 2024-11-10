@@ -124,7 +124,7 @@ def extract(manifest):
                     COMPRESSION_LEVEL 22,
                     ROW_GROUP_SIZE    15000);""" % {
         'geom':      wkb_cols[0],
-        'geom_flip': 'geom' if not flip_lat_lon else 'ST_FlipCoordinates(geom)',
+        'geom_flip': 'ST_FlipCoordinates(geom)' if flip_lat_lon else 'geom',
         'epsg':      epsg_id,
         'out':       filename.as_posix().replace('.shx', '.pq')}
 
