@@ -62,6 +62,17 @@ https://zenodo.org/records/8174931
 $ python east_asia.py main
 ```
 
+## Checking Results
+
+```bash
+$ find . -size 0 | grep -c pq$ # 0
+
+$ find . | grep -c pq$ # 357
+$ find . | grep -c shx$ # 358
+```
+
+WIP: ``Japan/Japan4.shx`` still needs to be processed.
+
 ## Merge PQs
 
 ```bash
