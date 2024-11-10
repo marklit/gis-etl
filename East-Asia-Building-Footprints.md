@@ -63,6 +63,25 @@ $ python east_asia.py
 
 ## Merge PQs
 
-WIP: Open every PQ file with filename=True and merge into a single PQ file.
+```bash
+$ ~/duckdb working.duckdb
+```
+
+```sql
+COPY (
+    SELECT   geom,
+             filename AS source
+    FROM     READ_PARQUET(['*/*.pq',
+                           '*/*/*.pq'],
+                          filename=True)
+    ORDER BY HILBERT_ENCODE([
+                ST_Y(ST_CENTROID(geom)),
+                ST_X(ST_CENTROID(geom))]::DOUBLE[2])
+) TO 'east_asian_buildings.pq' (
+        FORMAT            'PARQUET',
+        CODEC             'ZSTD',
+        COMPRESSION_LEVEL 22,
+        ROW_GROUP_SIZE    15000);
+```
 
 ## Extract EWKB Geometry
