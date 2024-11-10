@@ -61,6 +61,7 @@ WIP: Produce Parquet files of the building footprints instead of bounding boxes.
 
 ```python
 from   multiprocessing import Pool
+from   os.path         import exists
 from   pathlib         import Path
 
 import duckdb
@@ -95,6 +96,9 @@ workload = [(filename, get_epsg(filename))
 
 def extract(manifest):
     filename, epsg_id = manifest
+
+    if exists(filename.as_posix().replace('.shx', '.pq')):
+        return
 
     con = duckdb.connect(database=':memory:')
 
