@@ -5,6 +5,7 @@ from   pathlib         import Path
 
 import duckdb
 import pyproj
+from   rich.progress   import track
 import typer
 
 
@@ -130,9 +131,25 @@ def extract(manifest):
     print('Finished: %s' % filename)
 
 
-def get_ewkb_geometry(manifest):
-    filename = manifest[0]
+@app.command()
+def main(pool_size:int = typer.Option(8)):
+    # Make sure the extensions are installed in embedded version of DuckDB
+    con = duckdb.connect(database=':memory:')
 
+    for ext in ('spatial', 'parquet'):
+        con.sql('INSTALL %s' % ext)
+
+    con.sql('INSTALL lindel FROM community')
+
+    workload = [(filename, get_epsg(filename))
+                for filename in Path('.').glob('**/*.shx')]
+
+    pool = Pool(pool_size)
+    pool.map(extract, [(filename, epsg_num)
+                       for filename, epsg_num in workload])
+
+
+def get_ewkb_geometry(filename):
     con = duckdb.connect(database=':memory:')
     con.sql('LOAD spatial')
 
@@ -159,8 +176,8 @@ def get_ewkb_geometry(manifest):
           }
 
     try:
-        return [(x['shape_type'],
-                 x['cnt'],
+        return [(int(x['shape_type']),
+                 int(x['cnt']),
                  str(filename.as_posix()))
                 for x in list(con.sql(sql,
                                       params=(filename.as_posix(),))
@@ -173,43 +190,22 @@ def get_ewkb_geometry(manifest):
 
 
 @app.command()
-def main(pool_size:int = typer.Option(8)):
-    # Make sure the extensions are installed in embedded version of DuckDB
-    con = duckdb.connect(database=':memory:')
-
-    for ext in ('spatial', 'parquet'):
-        con.sql('INSTALL %s' % ext)
-
-    con.sql('INSTALL lindel FROM community')
-
-    workload = [(filename, get_epsg(filename))
-                for filename in Path('.').glob('**/*.shx')]
-
-    pool = Pool(pool_size)
-    pool.map(extract, [(filename, epsg_num)
-                       for filename, epsg_num in workload])
-
-
-@app.command()
-def ewkb(pool_size:int = typer.Option(8)):
+def ewkb_shape_stats(pool_size:int = typer.Option(8)):
     # Make sure the extensions are installed in embedded version of DuckDB
     con = duckdb.connect(database=':memory:')
     con.sql('INSTALL spatial')
 
-    pool = Pool(pool_size)
-    resp = pool.map(get_ewkb_geometry,
-                    [(filename,)
-                     for filename in Path('.').glob('**/*.shx')])
-
     with open('shape_stats.json', 'w') as f:
-        for recs in resp:
-            if recs and len(recs) == 3:
-                shape_type, num_recs, filename = recs
+       for filename in track(list(Path('.').glob('**/*.shx'))):
+            recs = get_ewkb_geometry(filename)
+            if recs:
+                for rec in recs:
+                    shape_type, num_recs, filename = rec
 
-                f.write(json.dumps({
-                            'shape_type': shape_type,
-                            'num_recs':   num_recs,
-                            'filename':   filename}) + '\n')
+                    f.write(json.dumps({
+                                'shape_type': shape_type,
+                                'num_recs':   num_recs,
+                                'filename':   filename}) + '\n')
 
 
 if __name__ == "__main__":

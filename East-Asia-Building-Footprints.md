@@ -101,7 +101,7 @@ COPY (
 ## Extract EWKB Geometry
 
 ```bash
-$ python east_asia.py ewkb
+$ python east_asia.py ewkb-shape-stats
 $ ~/duckdb
 ```
 
