@@ -162,9 +162,10 @@ def get_ewkb_geometry(filename):
                                  .iloc())
                 if x['column_type'] in ('WKB_BLOB', 'GEOMETRY')]
 
+    # WIP: Raise exception if you need this function to be more robust.
     if not wkb_cols:
         print('No geom field name found in %s' % filename.as_posix())
-        return None
+        return []
 
     # Get the number of records for each shape type.
     sql = '''SELECT   ('0x' || substr(%(geom)s::BLOB::TEXT, 7, 2))::INT
@@ -186,7 +187,9 @@ def get_ewkb_geometry(filename):
     except Exception as exc:
         print('Failed: %s' % filename.as_posix())
         print(exc)
-        return None
+
+        # WIP: Raise exception if you need this function to be more robust.
+        return []
 
 
 @app.command()
@@ -197,15 +200,13 @@ def ewkb_shape_stats(pool_size:int = typer.Option(8)):
 
     with open('shape_stats.json', 'w') as f:
        for filename in track(list(Path('.').glob('**/*.shx'))):
-            recs = get_ewkb_geometry(filename)
-            if recs:
-                for rec in recs:
-                    shape_type, num_recs, filename = rec
+            for rec in get_ewkb_geometry(filename):
+                shape_type, num_recs, filename = rec
 
-                    f.write(json.dumps({
-                                'shape_type': shape_type,
-                                'num_recs':   num_recs,
-                                'filename':   filename}) + '\n')
+                f.write(json.dumps({
+                            'shape_type': shape_type,
+                            'num_recs':   num_recs,
+                            'filename':   filename}) + '\n')
 
 
 if __name__ == "__main__":
