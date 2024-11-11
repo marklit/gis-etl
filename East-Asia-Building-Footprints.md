@@ -9,6 +9,7 @@ The original paper for this dataset: https://spj.science.org/doi/10.34133/remote
 ```bash
 $ sudo apt update
 $ sudo apt install \
+    gdal-bin \
     python3-pip \
     python3-virtualenv
 
@@ -18,8 +19,10 @@ $ source ~/.clsm/bin/activate
 $ pip install \
     'duckdb==1.1.3' \
     pandas \
+    pylint \
     pyproj \
     shapely \
+    shpyx \
     typer
 ```
 
@@ -55,6 +58,12 @@ LOAD spatial;
 The dataset is made available as a 21 GB ZIP file which totals 81 GB and 2,878 files when decompressed.
 
 https://zenodo.org/records/8174931
+
+## Check Code
+
+```bash
+$ pylint east_asia.py
+```
 
 ## Converting to Parquet
 
@@ -146,7 +155,7 @@ COPY (
 ## Extract EWKB Geometry
 
 ```bash
-$ python east_asia.py ewkb-shape-stats
+$ python east_asia.py ewkb-stats
 $ ~/duckdb
 ```
 
