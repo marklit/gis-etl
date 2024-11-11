@@ -224,8 +224,6 @@ def get_ewkb_geometry(filename):
              'geom': wkb_cols[0],
           }
 
-    # WIP: Cast to floats instead
-    # cannot convert float NaN to integer
     try:
         return [(float(x['shape_type']),
                  float(x['cnt']),
@@ -251,12 +249,12 @@ def ewkb_stats():
     with open('shape_stats.json', 'w') as f:
         for filename in track(list(Path('.').glob('**/*.shx'))):
             for rec in get_ewkb_geometry(filename):
-                shape_type, num_recs, filename = rec
+                shape_type, num_recs, filename_ = rec
 
                 f.write(json.dumps({
                             'shape_type': int(shape_type),
                             'num_recs':   int(num_recs),
-                            'filename':   filename}) + '\n')
+                            'filename':   filename_}) + '\n')
 
 
 if __name__ == "__main__":
