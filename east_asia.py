@@ -161,7 +161,7 @@ def get_ewkb_geometry(manifest):
     try:
         return [(x['shape_type'],
                  x['cnt'],
-                 filename)
+                 str(filename.as_posix()))
                 for x in list(con.sql(sql,
                                       params=(filename.as_posix(),))
                                  .to_df()
