@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# pylint: disable=C0103 C0115 C0116 C0123 C0201 C0209 C0301 C0302 C3001
+# pylint: disable=C0103 C0114 C0115 C0116 C0123 C0201 C0207 C0209 C0301 C0302 C3001
 # pylint: disable=R0912 R0913 R0914 R0915 R0916 R1702 R1729 R1732 R1718
 # pylint: disable=W0105 W0707 W0718 W1514
 
 import json
 from   multiprocessing import Pool
-from   os.path         import exists, join as join_
+from   os              import unlink
+from   os.path         import exists, getsize, join as join_
 from   pathlib         import Path
 from   shlex           import quote
 import tempfile
@@ -32,17 +33,21 @@ def get_epsg(filename):
 def extract(manifest):
     filename, epsg_id = manifest
 
-    if exists(filename.as_posix().replace('.shx', '.pq')):
-        print('Already processed: %s' % filename.as_posix())
-        return
+    target_pq = filename.as_posix().replace('.shx', '.pq')
 
-    # If epsg_id is None, it is likely UTM-modified. Try using ogr2ogr to
-    # convert the data into EPSG:4326 in a temp folder and process that data.
+    if exists(target_pq):
+        if getsize(target_pq):
+            print('Already processed: %s' % target_pq)
+            return None
+
+        unlink(target_pq) # Remove the empty PQ file and try to build again
+
+    # If epsg_id is None, it is likely UTM-modified. Convert using ogr2ogr
+    # into EPSG:4326 in a temp folder and process that data instead.
     # Leave the resulting .pq file along side the original .shx file.
-
     original_filename = str(filename.as_posix())
-    working_filename = original_filename
-    temp_dir = None
+    working_filename  = original_filename
+    temp_dir          = None
 
     if epsg_id is None:
         temp_dir = tempfile.TemporaryDirectory()
@@ -97,7 +102,6 @@ def extract(manifest):
                                              'EPSG:%(epsg)d',
                                              'EPSG:4326'))) as min_x
              FROM ST_READ(?)''' % {
-                'geom': wkb_cols[0],
                 'epsg': epsg_id}
 
 
@@ -173,6 +177,7 @@ def extract(manifest):
             return None
 
     print('Finished: %s' % original_filename)
+    return None
 
 
 @app.command()
@@ -189,8 +194,7 @@ def main(pool_size:int = typer.Option(8)):
                 for filename in Path('.').glob('**/*.shx')]
 
     pool = Pool(pool_size)
-    pool.map(extract, [(filename, epsg_num)
-                       for filename, epsg_num in workload])
+    pool.map(extract, workload)
 
 
 def get_ewkb_geometry(filename):
@@ -239,13 +243,13 @@ def get_ewkb_geometry(filename):
 
 
 @app.command()
-def ewkb_stats(pool_size:int = typer.Option(8)):
+def ewkb_stats():
     # Make sure the extensions are installed in embedded version of DuckDB
     con = duckdb.connect(database=':memory:')
     con.sql('INSTALL spatial')
 
     with open('shape_stats.json', 'w') as f:
-       for filename in track(list(Path('.').glob('**/*.shx'))):
+        for filename in track(list(Path('.').glob('**/*.shx'))):
             for rec in get_ewkb_geometry(filename):
                 shape_type, num_recs, filename = rec
 
