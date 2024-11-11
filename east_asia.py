@@ -250,8 +250,8 @@ def ewkb_stats(pool_size:int = typer.Option(8)):
                 shape_type, num_recs, filename = rec
 
                 f.write(json.dumps({
-                            'shape_type': shape_type,
-                            'num_recs':   num_recs,
+                            'shape_type': int(shape_type),
+                            'num_recs':   int(num_recs),
                             'filename':   filename}) + '\n')
 
 
