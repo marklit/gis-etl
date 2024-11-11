@@ -249,6 +249,7 @@ def ewkb_stats():
     with open('shape_stats.json', 'w') as f:
         for filename in track(list(Path('.').glob('**/*.shx'))):
             for rec in get_ewkb_geometry(filename):
+                print(rec) # Debugging
                 shape_type, num_recs, filename_ = rec
 
                 f.write(json.dumps({
