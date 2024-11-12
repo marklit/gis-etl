@@ -14,9 +14,12 @@ from   shlex           import quote
 import tempfile
 
 import duckdb
+import geopandas as gpd
 import pyproj
-from   rich.progress   import track
-from   shpyx           import run as execute
+from   rich.progress    import track
+from   shapely.geometry import shape
+from   shapely          import wkt
+from   shpyx            import run as execute
 import typer
 
 
@@ -28,6 +31,57 @@ def get_epsg(filename):
     return pyproj.Proj(open(str(filename).split('.')[0] + '.prj').read())\
                  .crs\
                  .to_epsg()
+
+
+def ewkb_to_pq(filename:str):
+    assert filename.endswith('.shx')
+
+    # Make sure the extensions are installed in embedded version of DuckDB
+    con = duckdb.connect(database=':memory:')
+    con.sql('INSTALL spatial;               LOAD spatial')
+    con.sql('INSTALL lindel FROM community; LOAD lindel')
+
+    # These were all POLYGON Z records. None of them that I looked at had any
+    # height information.
+    df = gpd.read_file(filename)
+    df = df.to_crs(4326)
+
+    temp_ = tempfile.NamedTemporaryFile(
+                suffix='.csv',
+                delete=False)
+
+    with open(temp_.name, 'w') as f:
+        f.write('"geom",\n')
+        for feature in track(df.iloc(), total=df.shape[0]):
+            geom = wkt.loads(wkt.dumps(shape(feature['geometry']),
+                             output_dimension=2))
+            f.write('"%s",\n' % geom.wkt)
+
+    # Convert to Parquet
+    sql = """COPY (
+               SELECT   geom::GEOMETRY as geom
+               FROM     READ_CSV(?, header=True)
+               ORDER BY HILBERT_ENCODE([
+                             ST_Y(ST_CENTROID(geom::GEOMETRY)),
+                             ST_X(ST_CENTROID(geom::GEOMETRY))]::DOUBLE[2])
+             ) TO '%(out)s' (
+                    FORMAT            'PARQUET',
+                    CODEC             'ZSTD',
+                    COMPRESSION_LEVEL 22,
+                    ROW_GROUP_SIZE    15000);""" % {
+                'out': filename.replace('.shx', '.pq')}
+
+    try:
+        con.sql(sql,
+                params=(temp_.name,))
+    except Exception as exc:
+        print(filename)
+        print(exc)
+
+    unlink(temp_.name)
+    print('Finished: %s' % filename.replace('.shx', '.pq'))
+
+    return None
 
 
 def extract(manifest):
@@ -87,6 +141,30 @@ def extract(manifest):
 
     if not wkb_cols:
         print('No geom field name found in %s' % original_filename)
+        return None
+
+    # If any geometry is outside of the 7 shape types GEOS supports,
+    # then process with geopandas and shapely. None of these files have
+    # flipped lat-lons.
+    sql = '''SELECT COUNT(*) cnt
+             FROM   ST_READ(?, keep_wkb=TRUE)
+             WHERE  ('0x' || substr(%(geom)s::BLOB::TEXT, 7, 2))::INT > 7''' % {
+             'geom':      wkb_cols[0],
+          }
+
+    if int(con.sql(sql, params=(filename,)).to_df().iloc()[0]['cnt']):
+        return ewkb_to_pq(working_filename)
+
+        if epsg_id is None:
+            cmd = 'rm -fr %s' % quote(temp_dir.name)
+
+            try:
+                execute(cmd)
+            except Exception as exc:
+                print(cmd)
+                print(exc)
+                return None
+
         return None
 
     # Do lat and long need to be flipped?
@@ -260,9 +338,6 @@ def ewkb_stats():
                             'filename':   filename_}) + '\n')
 
 
-@app.command()
-def ewkb_to_pq(filename:str):
-    pass
 
 
 if __name__ == "__main__":
