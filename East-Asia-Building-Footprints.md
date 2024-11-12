@@ -248,8 +248,8 @@ $ for FILENAME in */*.pq */*/*.pq; do
       echo $FILENAME
       echo "INSERT INTO h3_heatmap
                 SELECT   H3_LATLNG_TO_CELL(ST_Y(ST_CENTROID(geom)),
-                                              ST_X(ST_CENTROID(geom)),
-                                              7) AS h3_7,
+                                           ST_X(ST_CENTROID(geom)),
+                                           7) AS h3_7,
                          COUNT(*) AS num_recs
                 FROM     READ_PARQUET('$FILENAME')
                 GROUP BY 1" \
