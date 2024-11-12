@@ -243,7 +243,7 @@ Heatmap:
 $ echo "CREATE OR REPLACE TABLE h3_heatmap (
             h3_7 UINT64,
             num_recs BIGINT)" \
-    | ~/duckdb_111/duckdb heatmap.duckdb
+    | ~/duckdb heatmap.duckdb
 $ for FILENAME in */*.pq */*/*.pq; do
       echo $FILENAME
       echo "INSERT INTO h3_heatmap
@@ -253,10 +253,10 @@ $ for FILENAME in */*.pq */*/*.pq; do
                          COUNT(*) AS num_recs
                 FROM     READ_PARQUET('$FILENAME')
                 GROUP BY 1" \
-        | ~/duckdb_111/duckdb heatmap.duckdb
+        | ~/duckdb heatmap.duckdb
   done
 
-$ ~/duckdb_111/duckdb heatmap.duckdb
+$ ~/duckdb heatmap.duckdb
 ```
 
 ```sql
