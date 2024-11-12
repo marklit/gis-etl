@@ -152,7 +152,7 @@ def extract(manifest):
              'geom':      wkb_cols[0],
           }
 
-    if int(con.sql(sql, params=(filename,)).to_df().iloc()[0]['cnt']):
+    if int(con.sql(sql, params=(working_filename,)).to_df().iloc()[0]['cnt']):
         return ewkb_to_pq(working_filename)
 
         if epsg_id is None:
