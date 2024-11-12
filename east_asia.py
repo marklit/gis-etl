@@ -146,6 +146,14 @@ def extract(manifest):
     # If any geometry is outside of the 7 shape types GEOS supports,
     # then process with geopandas and shapely. None of these files have
     # flipped lat-lons.
+
+    # WIP: POLYGON Z, which is geometry shape type 235(?), is actually supported
+    # by DuckDB. The Z field can be dropped with the following:
+    #
+    # SELECT geom::POLYGON_2D::GEOMETRY FROM ST_READ('China/Macau/Macau.shp')
+    #
+    # The less than 8 test below should be loosened to allow for POLYGON Z
+    # through.
     sql = '''SELECT COUNT(*) cnt
              FROM   ST_READ(?, keep_wkb=TRUE)
              WHERE  ('0x' || substr(%(geom)s::BLOB::TEXT, 7, 2))::INT > 7''' % {
