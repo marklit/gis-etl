@@ -59,9 +59,10 @@ def ewkb_to_pq(filename:str):
         for feature in track(df.iloc(),
                              total=df.shape[0],
                              description=filename):
-            geom = wkt.loads(wkt.dumps(shape(feature['geometry']),
-                             output_dimension=2))
-            f.write('"%s",\n' % geom.wkt)
+            if feature['geometry']:
+                geom = wkt.loads(wkt.dumps(shape(feature['geometry']),
+                                 output_dimension=2))
+                f.write('"%s",\n' % geom.wkt)
 
     # Convert to Parquet
     sql = """COPY (
