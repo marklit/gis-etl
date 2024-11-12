@@ -10,6 +10,7 @@ from   multiprocessing import Pool
 from   os              import unlink
 from   os.path         import exists, getsize, join as join_
 from   pathlib         import Path
+from   random          import shuffle
 from   shlex           import quote
 import tempfile
 
@@ -292,7 +293,13 @@ def main(pool_size:int = typer.Option(8),
 
     # Run one at a time as these files had issues when running via a pool
     if run_via_python:
-        for filename in Path('.').glob('**/*.shx'):
+        files = list(Path('.').glob('**/*.shx'))
+
+        # If you need to re-run this, shuffle the filenames so that hopefully
+        # files that will succeed eventually get processed before ones that won't
+        shuffle(files)
+
+        for filename in files:
             extract((filename, get_epsg(filename), run_via_python))
     else:
         workload = [(filename,
