@@ -281,7 +281,7 @@ $ echo "SELECT   COUNT(*) cnt,
                               filename=True)
         GROUP BY 2
         ORDER BY 1;" \
-    | ~/duckdb_111/duckdb -json \
+    | ~/duckdb -json \
     > resp.json
 
 $ python ~/gis-etl/east_asia.py merge-pqs
