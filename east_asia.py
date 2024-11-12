@@ -175,7 +175,7 @@ def extract(manifest):
           }
 
     if int(con.sql(sql, params=(working_filename,)).to_df().iloc()[0]['cnt']):
-        return ewkb_to_pq(working_filename)
+        ewkb_to_pq(working_filename)
 
         if epsg_id is None:
             cmd = 'rm -fr %s' % quote(temp_dir.name)
@@ -360,9 +360,6 @@ def ewkb_stats():
 
     with open('shape_stats.json', 'w') as f:
         for filename in track(list(Path('.').glob('**/*.shx'))):
-            if str(filename.as_posix()) in skip:
-                continue
-
             for rec in get_ewkb_geometry(filename):
                 shape_type, num_recs, filename_ = rec
 
