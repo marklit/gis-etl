@@ -206,3 +206,5 @@ COPY (
         COMPRESSION_LEVEL 22,
         ROW_GROUP_SIZE    15000);
 ```
+
+WIP: Count the number of distinct sources and make sure it is 358.
