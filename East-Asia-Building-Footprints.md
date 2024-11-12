@@ -89,6 +89,14 @@ $ cd ~/CLSM
 $ python ~/gis-etl/east_asia.py main
 ```
 
+If you run into memory pressures or stability issues, consider running the single-threaded version that relies more on Python libraries than DuckDB.
+
+The following can be run after the above and will only work on files that haven't been converted into Parquet successfully.
+
+```bash
+$ python ~/gis-etl/east_asia.py main --run-via-python
+```
+
 ## Extract EWKB Geometry
 
 This will get the shape type IDs used in each Shapefile. It'll identify the filenames of any Shapefile using EWKB. So far, POLYGON Z is the only shape type
