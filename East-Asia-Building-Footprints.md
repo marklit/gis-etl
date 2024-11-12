@@ -99,10 +99,10 @@ $ python ~/gis-etl/east_asia.py main --run-via-python
 
 ## Extract EWKB Geometry
 
+This function is only meant for debugging purposes.
+
 This will get the shape type IDs used in each Shapefile. It'll identify the filenames of any Shapefile using EWKB. So far, POLYGON Z is the only shape type
 not supported by DuckDB's GEOS version that has turned up in this dataset.
-
-This function is only meant for debugging purposes.
 
 ```bash
 $ python ~/gis-etl/east_asia.py ewkb-stats
@@ -161,7 +161,7 @@ $ for FILENAME in */*.pq */*/*.pq; do
   done
 ```
 
-## Check Record Counts
+### Check Record Counts
 
 ```bash
 $ ~/duckdb working.duckdb
@@ -237,7 +237,7 @@ FROM   READ_PARQUET(['*/*.pq',
 -- Segmentation fault (core dumped)
 ```
 
-Heatmap:
+### Heatmap
 
 ```bash
 $ echo "CREATE OR REPLACE TABLE h3_heatmap (
