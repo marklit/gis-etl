@@ -10,6 +10,7 @@ The original paper for this dataset: https://spj.science.org/doi/10.34133/remote
 $ sudo apt update
 $ sudo apt install \
     gdal-bin \
+    jq \
     python3-pip \
     python3-virtualenv
 
