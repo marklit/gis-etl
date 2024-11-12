@@ -71,6 +71,35 @@ $ pylint east_asia.py
 $ python east_asia.py main
 ```
 
+## Extract EWKB Geometry
+
+```bash
+$ python east_asia.py ewkb-stats
+$ ~/duckdb
+```
+
+```sql
+FROM READ_JSON('shape_stats.json');
+```
+
+## EWKB Geometry to PQ
+
+```bash
+$ for FILENAME in China/Macau/Macau.shx \
+                  China/Fujian/Quanzhou.shx \
+                  China/Anhui/Wuhu.shx \
+                  China/Jiangsu/Zhenjiang.shx \
+                  China/Guangdong/Huizhou.shx \
+                  China/Guangxi/Guilin.shx \
+                  China/Gansu/Lanzhou.shx \
+                  China/Anhui/Wuhu.shx \
+                  China/Guangdong/Huizhou.shx \
+                  South\ Korea/South_Korea_build_final.shx; do
+      python east_asia.py ewkb-to-pq $FILENAME
+  done
+```
+
+
 ## Checking Results
 
 ```bash
@@ -127,36 +156,6 @@ $ hexdump -C China/Macau/Macau.pq
 00000120  20 31 39 38 36 34 34 35  33 66 37 29 00 29 01 00  | 19864453f7).)..|
 00000130  00 50 41 52 31                                    |.PAR1|
 00000135
-```
-
-
-
-## Extract EWKB Geometry
-
-```bash
-$ python east_asia.py ewkb-stats
-$ ~/duckdb
-```
-
-```sql
-FROM READ_JSON('shape_stats.json');
-```
-
-## EWKB Geometry to PQ
-
-```bash
-$ for FILENAME in China/Macau/Macau.shx \
-                  China/Fujian/Quanzhou.shx \
-                  China/Anhui/Wuhu.shx \
-                  China/Jiangsu/Zhenjiang.shx \
-                  China/Guangdong/Huizhou.shx \
-                  China/Guangxi/Guilin.shx \
-                  China/Gansu/Lanzhou.shx \
-                  China/Anhui/Wuhu.shx \
-                  China/Guangdong/Huizhou.shx \
-                  South\ Korea/South_Korea_build_final.shx; do
-      python east_asia.py ewkb-to-pq $FILENAME
-  done
 ```
 
 ## Merge PQs
