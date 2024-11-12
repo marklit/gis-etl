@@ -88,7 +88,7 @@ def ewkb_to_pq(filename:str):
 
 
 def extract(manifest):
-    filename, epsg_id = manifest
+    filename, epsg_id, run_via_python = manifest
 
     target_pq = filename.as_posix().replace('.shx', '.pq')
 
@@ -145,6 +145,9 @@ def extract(manifest):
     if not wkb_cols:
         print('No geom field name found in %s' % original_filename)
         return None
+
+    if run_via_python:
+        return ewkb_to_pq(working_filename)
 
     # If any geometry is outside of the 7 shape types GEOS supports,
     # then process with geopandas and shapely. None of these files have
@@ -270,7 +273,8 @@ def extract(manifest):
 
 
 @app.command()
-def main(pool_size:int = typer.Option(8)):
+def main(pool_size:int = typer.Option(8),
+         run_via_python:bool = typer.Option(True)):
     # Make sure the extensions are installed in embedded version of DuckDB
     con = duckdb.connect(database=':memory:')
 
@@ -279,7 +283,9 @@ def main(pool_size:int = typer.Option(8)):
 
     con.sql('INSTALL lindel FROM community')
 
-    workload = [(filename, get_epsg(filename))
+    workload = [(filename,
+                 get_epsg(filename),
+                 run_via_python)
                 for filename in Path('.').glob('**/*.shx')]
 
     pool = Pool(pool_size)

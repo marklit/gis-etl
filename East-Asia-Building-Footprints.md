@@ -107,16 +107,40 @@ FROM READ_JSON('shape_stats.json');
 
 ## Checking Results
 
+### Make sure there are no empty Parquet files
+
 ```bash
 $ find . -size 0 | grep -c pq$ # 0
-
-$ find . | grep -c pq$ # 357
-$ find . | grep -c shx$ # 358
 ```
 
-WIP: ``Japan/Japan4.shx`` still needs to be processed.
+### Find missing PQ files
 
-WIP: First vector of first record from each file. Make sure it's lon-lat.
+```python
+from pathlib import Path
+
+
+files = {}
+
+for ext in ('pq', 'shx'):
+    files[ext] = [x.as_posix().split('/')[-1].split('.')[0]
+                  for x in Path('.').glob('**/*.%s' % ext)]
+
+set(files['shx']) - set(files['pq'])
+```
+
+```
+{'Japan4', 'Lanzhou', 'Macau', 'Quanzhou', 'South_Korea_build_final'}
+```
+
+Run via Python instead of purely via DuckDB:
+
+```bash
+$ python ~/Desktop/gis-etl/east_asia.py main --run-via-python
+```
+
+### Check lat-lons
+
+First vector of first record from each file. Make sure it's lon-lat.
 
 ```bash
 $ function first_vertex () {
@@ -127,14 +151,29 @@ $ function first_vertex () {
   }
 
 $ for FILENAME in `find . | grep pq$`; do
-      echo $FILENAME, `first_vertex $FILENAME`
+      echo `first_vertex "$FILENAME"`, $FILENAME
   done
+```
 
+```
+Invalid Input Error: File './China/Gansu/Lanzhou.pq' too small to be a Parquet file
+```
 
-$ first_vertex China/Fujian/Fuzhou.pq # POLYGON ((461923.69775799505 2848796.600784136
-$ first_vertex China/Hainan/Hainan.pq #POLYGON ((614622.0454424241 2077452.740299601
-$ first_vertex China/Jiangsu/Suzhou.pq # POLYGON ((439976.44070133485 3448981.960646557
+The North Korean filename didn't pass into the function properly so I ran it manually.
 
+```sql
+SELECT SPLIT_PART(geom::TEXT, ',', 1) geom
+FROM   READ_PARQUET('North Korea/North_Korea_build_final.pq')
+LIMIT  1;
+```
+
+```
+┌─────────────────────────────────────────────────┐
+│                      geom                       │
+│                     varchar                     │
+├─────────────────────────────────────────────────┤
+│ POLYGON ((127.60626018047337 39.831361938921134 │
+└─────────────────────────────────────────────────┘
 ```
 
 ## Merge PQs
