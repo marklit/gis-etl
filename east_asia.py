@@ -55,7 +55,9 @@ def ewkb_to_pq(filename:str):
 
     with open(temp_.name, 'w') as f:
         f.write('"geom",\n')
-        for feature in track(df.iloc(), total=df.shape[0]):
+        for feature in track(df.iloc(),
+                             total=df.shape[0],
+                             description=filename):
             geom = wkt.loads(wkt.dumps(shape(feature['geometry']),
                              output_dimension=2))
             f.write('"%s",\n' % geom.wkt)
@@ -283,13 +285,18 @@ def main(pool_size:int = typer.Option(8),
 
     con.sql('INSTALL lindel FROM community')
 
-    workload = [(filename,
-                 get_epsg(filename),
-                 run_via_python)
-                for filename in Path('.').glob('**/*.shx')]
+    # Run one at a time as these files had issues when running via a pool
+    if run_via_python:
+        for filename in Path('.').glob('**/*.shx'):
+            extract((filename, get_epsg(filename), run_via_python))
+    else:
+        workload = [(filename,
+                     get_epsg(filename),
+                     run_via_python)
+                    for filename in Path('.').glob('**/*.shx')]
 
-    pool = Pool(pool_size)
-    pool.map(extract, workload)
+        pool = Pool(pool_size)
+        pool.map(extract, workload)
 
 
 def get_ewkb_geometry(filename):
