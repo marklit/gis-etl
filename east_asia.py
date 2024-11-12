@@ -109,6 +109,9 @@ def extract(manifest):
     working_filename  = original_filename
     temp_dir          = None
 
+    if run_via_python:
+        return ewkb_to_pq(working_filename)
+
     if epsg_id is None:
         temp_dir = tempfile.TemporaryDirectory()
 
@@ -153,9 +156,6 @@ def extract(manifest):
     if not wkb_cols:
         print('No geom field name found in %s' % original_filename)
         return None
-
-    if run_via_python:
-        return ewkb_to_pq(working_filename)
 
     # If any geometry is outside of the 7 shape types GEOS supports,
     # then process with geopandas and shapely. None of these files have
