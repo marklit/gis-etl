@@ -33,6 +33,9 @@ def get_epsg(filename):
                  .to_epsg()
 
 
+# WIP: POLYGON Z, which is geometry shape type 235(?), is actually supported
+# by DuckDB. This method shouldn't be needed. Just use
+# geom::POLYGON_2D::GEOMETRY to remove the Z field.
 def ewkb_to_pq(filename:str):
     assert filename.endswith('.shx')
 
