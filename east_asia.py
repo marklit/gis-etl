@@ -79,7 +79,7 @@ def ewkb_to_pq(filename:str):
         print(exc)
 
     unlink(temp_.name)
-    print('Finished: %s' % filename.replace('.shx', '.pq'))
+    print('Finished EWKB to PQ: %s' % filename.replace('.shx', '.pq'))
 
     return None
 
@@ -106,11 +106,11 @@ def extract(manifest):
     if epsg_id is None:
         temp_dir = tempfile.TemporaryDirectory()
 
-        cmd = 'ogr2ogr -f "ESRI Shapefile" -t_srs EPSG:4326 %(dest)s %(source)s' % {
-            'source': quote(original_filename),
-            'dest':   quote(join_(temp_dir.name,
-                                  original_filename.split('/')[-1]))
-        }
+        cmd = 'ogr2ogr -f "ESRI Shapefile" ' \
+              '-t_srs EPSG:4326 %(dest)s %(source)s' % {
+                'source': quote(original_filename),
+                'dest':   quote(join_(temp_dir.name,
+                                      original_filename.split('/')[-1]))}
 
         print(cmd)
 
