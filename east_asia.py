@@ -336,7 +336,5 @@ def ewkb_stats():
                             'filename':   filename_}) + '\n')
 
 
-
-
 if __name__ == "__main__":
     app()
