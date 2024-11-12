@@ -285,4 +285,36 @@ $ echo "SELECT   COUNT(*) cnt,
     > resp.json
 
 $ python ~/gis-etl/east_asia.py merge-pqs
+
+$ du -hc east_asian_buildings_* | tail -n1 # 14 GB
+$ ls -lh east_asian_buildings_*
+```
+
+```
+529M .. east_asian_buildings_00.pq
+515M .. east_asian_buildings_01.pq
+493M .. east_asian_buildings_02.pq
+517M .. east_asian_buildings_03.pq
+525M .. east_asian_buildings_04.pq
+558M .. east_asian_buildings_05.pq
+522M .. east_asian_buildings_06.pq
+515M .. east_asian_buildings_07.pq
+515M .. east_asian_buildings_08.pq
+528M .. east_asian_buildings_09.pq
+487M .. east_asian_buildings_10.pq
+486M .. east_asian_buildings_11.pq
+542M .. east_asian_buildings_12.pq
+512M .. east_asian_buildings_13.pq
+493M .. east_asian_buildings_14.pq
+532M .. east_asian_buildings_15.pq
+491M .. east_asian_buildings_16.pq
+552M .. east_asian_buildings_17.pq
+522M .. east_asian_buildings_18.pq
+552M .. east_asian_buildings_19.pq
+593M .. east_asian_buildings_20.pq
+507M .. east_asian_buildings_21.pq
+610M .. east_asian_buildings_22.pq
+529M .. east_asian_buildings_23.pq
+657M .. east_asian_buildings_24.pq
+581M .. east_asian_buildings_25.pq
 ```
