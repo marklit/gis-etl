@@ -67,12 +67,14 @@ The dataset is made available as a 21 GB ZIP file which totals 81 GB and 2,878 f
 
 https://zenodo.org/records/8174931
 
+Extract the above ZIP file to ``~/CLSM``
+
 ```bash
-$ tree CLSM/ -d -L 1
+$ tree ~/CLSM/ -d -L 1
 ```
 
 ```
-CLSM/
+~/CLSM/
 ├── China
 ├── Japan
 ├── Mongolia
@@ -83,7 +85,7 @@ CLSM/
 ## Converting to Parquet
 
 ```bash
-$ CLSM
+$ cd ~/CLSM
 $ python ~/gis-etl/east_asia.py main
 ```
 
