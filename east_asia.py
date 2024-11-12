@@ -298,9 +298,7 @@ def get_ewkb_geometry(filename):
                             AS shape_type,
                       COUNT(*) cnt
              FROM     ST_READ(?, keep_wkb=TRUE)
-             GROUP BY 1''' % {
-             'geom': wkb_cols[0],
-          }
+             GROUP BY 1''' % {'geom': wkb_cols[0]}
 
     try:
         return [(float(x['shape_type']) if x['shape_type'] else 0,
