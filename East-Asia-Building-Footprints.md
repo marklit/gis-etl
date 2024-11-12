@@ -264,6 +264,8 @@ COPY (
     SELECT   H3_CELL_TO_BOUNDARY_WKT(h3_7)::geometry geom,
              SUM(num_recs)::INT32 AS num_recs
     FROM     h3_heatmap
+    WHERE    ST_X(ST_CENTROID(H3_CELL_TO_BOUNDARY_WKT(h3_7)::geometry)) < 175
+    AND      ST_X(ST_CENTROID(H3_CELL_TO_BOUNDARY_WKT(h3_7)::geometry)) > -175
     GROUP BY 1
 ) TO 'h3_heatmap.h3_7.gpkg'
     WITH (FORMAT GDAL,
