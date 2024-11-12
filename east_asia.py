@@ -248,6 +248,9 @@ def ewkb_stats():
 
     with open('shape_stats.json', 'w') as f:
         for filename in track(list(Path('.').glob('**/*.shx'))):
+            if str(filename.as_posix()) in skip:
+                continue
+
             for rec in get_ewkb_geometry(filename):
                 print(rec) # Debugging
                 shape_type, num_recs, filename_ = rec
@@ -256,6 +259,11 @@ def ewkb_stats():
                             'shape_type': int(shape_type),
                             'num_recs':   int(num_recs),
                             'filename':   filename_}) + '\n')
+
+
+@app.command()
+def ewkb_to_pq(filename:str):
+    pass
 
 
 if __name__ == "__main__":

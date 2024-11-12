@@ -129,6 +129,36 @@ $ hexdump -C China/Macau/Macau.pq
 00000135
 ```
 
+
+
+## Extract EWKB Geometry
+
+```bash
+$ python east_asia.py ewkb-stats
+$ ~/duckdb
+```
+
+```sql
+FROM READ_JSON('shape_stats.json');
+```
+
+## EWKB Geometry to PQ
+
+```bash
+$ for FILENAME in China/Macau/Macau.shx \
+                  China/Fujian/Quanzhou.shx \
+                  China/Anhui/Wuhu.shx \
+                  China/Jiangsu/Zhenjiang.shx \
+                  China/Guangdong/Huizhou.shx \
+                  China/Guangxi/Guilin.shx \
+                  China/Gansu/Lanzhou.shx \
+                  China/Anhui/Wuhu.shx \
+                  China/Guangdong/Huizhou.shx \
+                  South\ Korea/South_Korea_build_final.shx; do
+      python east_asia.py ewkb-to-pq $FILENAME
+  done
+```
+
 ## Merge PQs
 
 ```bash
@@ -150,15 +180,4 @@ COPY (
         CODEC             'ZSTD',
         COMPRESSION_LEVEL 22,
         ROW_GROUP_SIZE    15000);
-```
-
-## Extract EWKB Geometry
-
-```bash
-$ python east_asia.py ewkb-stats
-$ ~/duckdb
-```
-
-```sql
-FROM READ_JSON('shape_stats.json');
 ```
