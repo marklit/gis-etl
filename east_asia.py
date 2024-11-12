@@ -137,12 +137,17 @@ def extract(manifest):
     # Find the name of the geom column
     sql = 'DESCRIBE FROM ST_READ(?, keep_wkb=TRUE) LIMIT 1'
 
-    wkb_cols = [x['column_name']
-                for x in list(con.sql(sql,
-                                      params=(working_filename,))
-                                 .to_df()
-                                 .iloc())
-                if x['column_type'] in ('WKB_BLOB', 'GEOMETRY')]
+    try:
+        wkb_cols = [x['column_name']
+                    for x in list(con.sql(sql,
+                                          params=(working_filename,))
+                                     .to_df()
+                                     .iloc())
+                    if x['column_type'] in ('WKB_BLOB', 'GEOMETRY')]
+    except Exception as exc:
+        print(working_filename)
+        print(exc)
+        return None
 
     if not wkb_cols:
         print('No geom field name found in %s' % original_filename)
