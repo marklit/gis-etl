@@ -91,7 +91,7 @@ $ python ~/gis-etl/east_asia.py main
 
 If you run into memory pressures or stability issues, consider running the single-threaded version that relies more on Python libraries than DuckDB.
 
-The following can be run after the above and will only work on files that haven't been converted into Parquet successfully.
+The following can be run after the above and will only work on files that haven't been converted into Parquet successfully. It also includes a per-record progress bar with an estimated time remaining.
 
 ```bash
 $ python ~/gis-etl/east_asia.py main --run-via-python
