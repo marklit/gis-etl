@@ -113,18 +113,15 @@ $ ~/duckdb
 FROM READ_JSON('shape_stats.json');
 ```
 
-## Checking Results
+## Checking Resulting Parquet Files
 
-### Make sure there are no empty Parquet files
+### Any Empty Parquet files?
 
-WIP: This counts 3 more .shx files than .pq but the Python code below can't find them.
 ```bash
 $ find . | grep -c shx$ # 358
-$ find . | grep -c pq$  # 355
+$ find . | grep -c pq$  # 358
 $ find . -size 0 | grep -c pq$ # 0
 ```
-
-### Find missing PQ files
 
 ```python
 from pathlib import Path
@@ -139,8 +136,8 @@ for ext in ('pq', 'shx'):
 set(files['shx']) - set(files['pq'])
 ```
 
-```
-{'China/Fujian/Fuzhou', 'China/Hainan/Hainan', 'China/Jiangsu/Suzhou'}
+```python
+set()
 ```
 
 ### Check lat-lons
@@ -148,14 +145,15 @@ set(files['shx']) - set(files['pq'])
 First vector of first record from each file. Make sure it's lon-lat.
 
 ```bash
-$ find . | grep pq$  | wc -l # 355
-$ ls */*.pq */*/*.pq | wc -l # 355
+# Make sure the wildcard statement does return every PQ file
+$ find . | grep pq$  | wc -l # 358
+$ ls */*.pq */*/*.pq | wc -l # 358
 
 $ function first_vertex () {
       echo "SELECT SPLIT_PART(geom::TEXT, ',', 1) geom
             FROM   READ_PARQUET('$1')
             LIMIT  1;" \
-        | ~/duckdb_111/duckdb -json | jq .[0].geom
+        | ~/duckdb -json | jq .[0].geom
   }
 
 $ for FILENAME in */*.pq */*/*.pq; do
@@ -163,39 +161,112 @@ $ for FILENAME in */*.pq */*/*.pq; do
   done
 ```
 
-## Merge PQs
+## Check Record Counts
 
 ```bash
 $ ~/duckdb working.duckdb
 ```
 
 ```sql
-COPY (
-    SELECT   ST_GEOMFROMWKB(geom) geom,
-             filename AS source
-    FROM     READ_PARQUET(['*/*.pq',
-                           '*/*/*.pq'],
-                          filename=True)
-    ORDER BY HILBERT_ENCODE([
-                ST_Y(ST_CENTROID(ST_GEOMFROMWKB(geom))),
-                ST_X(ST_CENTROID(ST_GEOMFROMWKB(geom)))]::DOUBLE[2])
-) TO '/mnt/d/gis/east_asian_buildings.pq' (
-        FORMAT            'PARQUET',
-        CODEC             'ZSTD',
-        COMPRESSION_LEVEL 22,
-        ROW_GROUP_SIZE    15000);
+SELECT COUNT(DISTINCT filename)
+FROM   READ_PARQUET(['*/*.pq',
+                     '*/*/*.pq'],
+                    filename=True); -- 358
 ```
 
-WIP: Count the number of distinct sources and make sure it is 358.
+Make sure there are plausible number of records for each file.
 
 ```sql
-SELECT COUNT(DISTINCT filename)
-FROM   READ_PARQUET('/mnt/d/gis/east_asian_buildings.pq');
+.maxrows 20
 
--- Make sure there are plausible number of records for each file.
 SELECT   COUNT(*),
          filename
-FROM     READ_PARQUET('/mnt/d/gis/east_asian_buildings.pq');
+FROM     READ_PARQUET(['*/*.pq',
+                       '*/*/*.pq'],
+                      filename=True)
 GROUP BY 2
 ORDER BY 1;
+```
+
+```
+┌──────────────┬────────────────────────────────────────┐
+│ count_star() │                filename                │
+│    int64     │                varchar                 │
+├──────────────┼────────────────────────────────────────┤
+│         6702 │ China/Tibet/Ngari.pq                   │
+│         9081 │ China/Hubei/Shennongjia.pq             │
+│         9912 │ China/Xinjiang/Kunyu.pq                │
+│        10304 │ China/Xinjiang/Shuanghe.pq             │
+│        10400 │ China/Qinghai/Golog.pq                 │
+│        10706 │ China/Macau/Macau.pq                   │
+│        10765 │ China/Xinjiang/Beitun.pq               │
+│        11558 │ China/Xinjiang/Tiemenguan.pq           │
+│        12154 │ China/Tibet/Qamdo.pq                   │
+│        13257 │ China/Tibet/Nagqu.pq                   │
+│          ·   │          ·                             │
+│          ·   │          ·                             │
+│          ·   │          ·                             │
+│      2925195 │ China/Hebei/Baoding.pq                 │
+│      2938536 │ China/Beijing/Beijing.pq               │
+│      2953535 │ China/Heilongjiang/Harbin.pq           │
+│      3177243 │ China/Shandong/Linyi.pq                │
+│      3337219 │ Japan/Japan1.pq                        │
+│      3622496 │ China/Shandong/Weifang.pq              │
+│      3793564 │ South Korea/South_Korea_build_final.pq │
+│      5501408 │ China/Chongqing/Chongqing.pq           │
+│      8597500 │ Japan/Japan2.pq                        │
+│     12519164 │ Japan/Japan4.pq                        │
+├──────────────┴────────────────────────────────────────┤
+│ 358 rows (20 shown)                         2 columns │
+└───────────────────────────────────────────────────────┘
+```
+
+```sql
+SELECT COUNT(*)
+FROM   READ_PARQUET(['*/*.pq',
+                     '*/*/*.pq']); -- 281093422
+
+.mode line
+
+SELECT MIN(ST_XMIN(ST_GEOMFROMWKB(geom))),
+       MAX(ST_XMAX(ST_GEOMFROMWKB(geom))),
+       MIN(ST_YMIN(ST_GEOMFROMWKB(geom))),
+       MAX(ST_YMAX(ST_GEOMFROMWKB(geom)))
+FROM   READ_PARQUET(['*/*.pq',
+                     '*/*/*.pq']);
+-- Segmentation fault (core dumped)
+```
+
+Heatmap:
+
+```bash
+$ echo "CREATE OR REPLACE TABLE h3_heatmap (
+            h3_7 UINT64,
+            num_recs BIGINT)" \
+    | ~/duckdb_111/duckdb heatmap.duckdb
+$ for FILENAME in */*.pq */*/*.pq; do
+      echo $FILENAME
+      echo "INSERT INTO h3_heatmap
+                SELECT   H3_LATLNG_TO_CELL(ST_Y(ST_CENTROID(geom)),
+                                              ST_X(ST_CENTROID(geom)),
+                                              7) AS h3_7,
+                         COUNT(*) AS num_recs
+                FROM     READ_PARQUET('$FILENAME')
+                GROUP BY 1" \
+        | ~/duckdb_111/duckdb heatmap.duckdb
+  done
+
+$ ~/duckdb_111/duckdb heatmap.duckdb
+```
+
+```sql
+COPY (
+    SELECT   H3_CELL_TO_BOUNDARY_WKT(h3_7)::geometry geom,
+             SUM(num_recs)::INT32 AS num_recs
+    FROM     h3_heatmap
+    GROUP BY 1
+) TO 'h3_heatmap.h3_7.gpkg'
+    WITH (FORMAT GDAL,
+          DRIVER 'GPKG',
+          LAYER_CREATION_OPTIONS 'WRITE_BBOX=YES');
 ```
