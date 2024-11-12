@@ -284,5 +284,5 @@ $ echo "SELECT   COUNT(*) cnt,
     | ~/duckdb_111/duckdb -json \
     > resp.json
 
-$ python ~/gis-etl/east_asia.py merge_pqs
+$ python ~/gis-etl/east_asia.py merge-pqs
 ```
