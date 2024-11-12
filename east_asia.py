@@ -374,5 +374,52 @@ def ewkb_stats():
                             'filename':   filename_}) + '\n')
 
 
+
+@app.command()
+def merge_pqs(max_rows:int = typer.Option(10_000_000),
+              folder:str   = typer.Option('/mnt/d/gis')):
+    # WIP: Calculate this in this method, not before this method is called
+    recs = json.loads(open('resp.json').read())
+
+    num_rows  = 0
+    batches   = {0: []}
+    batch_num = 0
+
+    for rec in recs:
+        if num_rows > max_rows:
+            batch_num = batch_num + 1
+            batches[batch_num] = []
+            num_rows = 0
+
+        batches[batch_num].append(rec['filename'])
+        num_rows = num_rows + rec['cnt']
+
+    # WIP: Make the output path configurable
+    sql = """COPY (
+                 SELECT   geom,
+                          filename AS source
+                 FROM     READ_PARQUET([%(pq_files)s],
+                                       filename=True)
+                 ORDER BY HILBERT_ENCODE([
+                             ST_Y(ST_CENTROID(geom)),
+                             ST_X(ST_CENTROID(geom))]::DOUBLE[2])
+             ) TO '%(folder)s/east_asian_buildings_%(batch_num)02d.pq' (
+                     FORMAT            'PARQUET',
+                     CODEC             'ZSTD',
+                     COMPRESSION_LEVEL 22,
+                     ROW_GROUP_SIZE    15000);"""
+
+    con = duckdb.connect(database=':memory:')
+    con.sql('INSTALL spatial; LOAD spatial')
+    con.sql('INSTALL parquet; LOAD parquet')
+    con.sql('INSTALL lindel FROM community; LOAD lindel')
+
+    for batch_num, pq_files in track(batches.items()):
+        sql_ = sql % {'batch_num': batch_num,
+                      'pq_files':  ','.join("'%s'" % x for x in pq_files),
+                      'folder':    folder}
+        con.sql(sql_)
+
+
 if __name__ == "__main__":
     app()

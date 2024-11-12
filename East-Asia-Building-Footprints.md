@@ -270,3 +270,19 @@ COPY (
           DRIVER 'GPKG',
           LAYER_CREATION_OPTIONS 'WRITE_BBOX=YES');
 ```
+
+## Merge into fewer PQ files
+
+```bash
+$ echo "SELECT   COUNT(*) cnt,
+                 filename
+        FROM     READ_PARQUET(['*/*.pq',
+                               '*/*/*.pq'],
+                              filename=True)
+        GROUP BY 2
+        ORDER BY 1;" \
+    | ~/duckdb_111/duckdb -json \
+    > resp.json
+
+$ python ~/gis-etl/east_asia.py merge_pqs
+```
