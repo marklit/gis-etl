@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # pylint: disable=C0103 C0114 C0115 C0116 C0123 C0201 C0207 C0209 C0301 C0302 C3001
-# pylint: disable=R0912 R0913 R0914 R0915 R0916 R1702 R1729 R1732 R1718
+# pylint: disable=R0911 R0912 R0913 R0914 R0915 R0916 R1702 R1729 R1732 R1718
 # pylint: disable=W0105 W0707 W0718 W1514
 
 import json
@@ -91,8 +91,6 @@ def ewkb_to_pq(filename:str):
 
     unlink(temp_.name)
     print('Finished EWKB to PQ: %s' % filename.replace('.shx', '.pq'))
-
-    return None
 
 
 def extract(manifest):
