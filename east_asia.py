@@ -35,12 +35,15 @@ def get_epsg(filename):
 
 
 # WIP: POLYGON Z, which is geometry shape type 235(?), is actually supported
-# by DuckDB. This method shouldn't be needed. Just use
+# by DuckDB. This method shouldn't be needed for 2D conversion work. Just use
 # geom::POLYGON_2D::GEOMETRY to remove the Z field.
+# I'll keep this method here as it seems to be more reliable with a few
+# Shapefiles compared to DuckDB.
 def ewkb_to_pq(filename:str):
     assert filename.endswith('.shx')
 
     # Make sure the extensions are installed in embedded version of DuckDB
+    # WIP: specify working file so DuckDB can spill to disk?
     con = duckdb.connect(database=':memory:')
     con.sql('INSTALL spatial;               LOAD spatial')
     con.sql('INSTALL lindel FROM community; LOAD lindel')
