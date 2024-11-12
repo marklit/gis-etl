@@ -225,7 +225,7 @@ def get_ewkb_geometry(filename):
           }
 
     try:
-        return [(float(x['shape_type']),
+        return [(float(x['shape_type']) if x['shape_type'] else 0,
                  float(x['cnt']),
                  str(filename.as_posix()))
                 for x in list(con.sql(sql,
@@ -252,7 +252,6 @@ def ewkb_stats():
                 continue
 
             for rec in get_ewkb_geometry(filename):
-                print(rec) # Debugging
                 shape_type, num_recs, filename_ = rec
 
                 f.write(json.dumps({
