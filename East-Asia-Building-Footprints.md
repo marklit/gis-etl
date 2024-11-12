@@ -117,7 +117,10 @@ FROM READ_JSON('shape_stats.json');
 
 ### Make sure there are no empty Parquet files
 
+WIP: This counts 3 more .shx files than .pq but the Python code below can't find them.
 ```bash
+$ find . | grep -c shx$ # 358
+$ find . | grep -c pq$  # 355
 $ find . -size 0 | grep -c pq$ # 0
 ```
 
@@ -130,20 +133,14 @@ from pathlib import Path
 files = {}
 
 for ext in ('pq', 'shx'):
-    files[ext] = [x.as_posix().split('/')[-1].split('.')[0]
+    files[ext] = [x.as_posix().split('.')[0]
                   for x in Path('.').glob('**/*.%s' % ext)]
 
 set(files['shx']) - set(files['pq'])
 ```
 
 ```
-{'Japan4', 'Lanzhou', 'Macau', 'Quanzhou', 'South_Korea_build_final'}
-```
-
-Run via Python instead of purely via DuckDB:
-
-```bash
-$ python ~/Desktop/gis-etl/east_asia.py main --run-via-python
+{'China/Fujian/Fuzhou', 'China/Hainan/Hainan', 'China/Jiangsu/Suzhou'}
 ```
 
 ### Check lat-lons
@@ -151,6 +148,9 @@ $ python ~/Desktop/gis-etl/east_asia.py main --run-via-python
 First vector of first record from each file. Make sure it's lon-lat.
 
 ```bash
+$ find . | grep pq$  | wc -l # 355
+$ ls */*.pq */*/*.pq | wc -l # 355
+
 $ function first_vertex () {
       echo "SELECT SPLIT_PART(geom::TEXT, ',', 1) geom
             FROM   READ_PARQUET('$1')
@@ -158,30 +158,9 @@ $ function first_vertex () {
         | ~/duckdb_111/duckdb -json | jq .[0].geom
   }
 
-$ for FILENAME in `find . | grep pq$`; do
+$ for FILENAME in */*.pq */*/*.pq; do
       echo `first_vertex "$FILENAME"`, $FILENAME
   done
-```
-
-```
-Invalid Input Error: File './China/Gansu/Lanzhou.pq' too small to be a Parquet file
-```
-
-The North Korean filename didn't pass into the function properly so I ran it manually.
-
-```sql
-SELECT SPLIT_PART(geom::TEXT, ',', 1) geom
-FROM   READ_PARQUET('North Korea/North_Korea_build_final.pq')
-LIMIT  1;
-```
-
-```
-┌─────────────────────────────────────────────────┐
-│                      geom                       │
-│                     varchar                     │
-├─────────────────────────────────────────────────┤
-│ POLYGON ((127.60626018047337 39.831361938921134 │
-└─────────────────────────────────────────────────┘
 ```
 
 ## Merge PQs
@@ -192,15 +171,15 @@ $ ~/duckdb working.duckdb
 
 ```sql
 COPY (
-    SELECT   geom,
+    SELECT   ST_GEOMFROMWKB(geom) geom,
              filename AS source
     FROM     READ_PARQUET(['*/*.pq',
                            '*/*/*.pq'],
                           filename=True)
     ORDER BY HILBERT_ENCODE([
-                ST_Y(ST_CENTROID(geom)),
-                ST_X(ST_CENTROID(geom))]::DOUBLE[2])
-) TO 'east_asian_buildings.pq' (
+                ST_Y(ST_CENTROID(ST_GEOMFROMWKB(geom))),
+                ST_X(ST_CENTROID(ST_GEOMFROMWKB(geom)))]::DOUBLE[2])
+) TO '/mnt/d/gis/east_asian_buildings.pq' (
         FORMAT            'PARQUET',
         CODEC             'ZSTD',
         COMPRESSION_LEVEL 22,
@@ -208,3 +187,15 @@ COPY (
 ```
 
 WIP: Count the number of distinct sources and make sure it is 358.
+
+```sql
+SELECT COUNT(DISTINCT filename)
+FROM   READ_PARQUET('/mnt/d/gis/east_asian_buildings.pq');
+
+-- Make sure there are plausible number of records for each file.
+SELECT   COUNT(*),
+         filename
+FROM     READ_PARQUET('/mnt/d/gis/east_asian_buildings.pq');
+GROUP BY 2
+ORDER BY 1;
+```
